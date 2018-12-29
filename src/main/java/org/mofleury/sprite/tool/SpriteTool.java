@@ -14,8 +14,9 @@ import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
-import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -43,11 +44,13 @@ class SpriteTool implements Callable<Void> {
     public Void call() throws Exception {
 
         Path rootPath = root.toPath();
-        List<SpriteActionData> actionData = Files.walk(rootPath, FileVisitOption.FOLLOW_LINKS)
+        Map<String, SpriteActionData> actionData = Files.walk(rootPath, FileVisitOption.FOLLOW_LINKS)
                 .filter(p -> p.toFile().isFile())
+                .filter(p -> p.toString().endsWith("png"))
                 .sorted(Comparator.comparing(Path::toString))
                 .map(f -> extractActionData(rootPath, f))
-                .collect(Collectors.toList());
+                .filter(a -> a.getAnchor() != null || a.getAttackbox() != null)
+                .collect(Collectors.toMap(SpriteActionData::getFilename, Function.identity()));
 
         Gson gson = new GsonBuilder()
                 .setPrettyPrinting()
@@ -67,6 +70,9 @@ class SpriteTool implements Callable<Void> {
         BufferedImage image = null;
         try {
             image = ImageIO.read(file);
+            if (image == null) {
+                throw new IOException("Not an image file, image is null : " + frame);
+            }
         } catch (IOException e) {
             throw new IllegalStateException("Unable to read frame file " + frame, e);
         }
