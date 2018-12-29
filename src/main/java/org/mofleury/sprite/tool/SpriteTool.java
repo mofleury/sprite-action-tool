@@ -1,17 +1,22 @@
 package org.mofleury.sprite.tool;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 
 @Slf4j
 @CommandLine.Command(description = "Extracts action metadata from action sprites",
@@ -38,10 +43,19 @@ class SpriteTool implements Callable<Void> {
     public Void call() throws Exception {
 
         Path rootPath = root.toPath();
-        Files.walk(rootPath, FileVisitOption.FOLLOW_LINKS)
+        List<SpriteActionData> actionData = Files.walk(rootPath, FileVisitOption.FOLLOW_LINKS)
                 .filter(p -> p.toFile().isFile())
                 .sorted(Comparator.comparing(Path::toString))
-                .forEach(f -> log.info("{}", extractActionData(rootPath, f)));
+                .map(f -> extractActionData(rootPath, f))
+                .collect(Collectors.toList());
+
+        Gson gson = new GsonBuilder()
+                .setPrettyPrinting()
+                .create();
+
+        try (FileWriter writer = new FileWriter(output)) {
+            gson.toJson(actionData, writer);
+        }
 
         return null;
     }
