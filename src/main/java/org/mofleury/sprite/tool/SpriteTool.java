@@ -77,19 +77,20 @@ class SpriteTool implements Callable<Void> {
             throw new IllegalStateException("Unable to read frame file " + frame, e);
         }
         Point anchor = findAnchor(image);
-        Area attackbox = findAttackBox(image);
+        Area attackbox = findArea(image, Color.RED);
+        Area lifebox = findArea(image, Color.GREEN);
 
-        return new SpriteActionData(filename, anchor, attackbox);
+        return new SpriteActionData(filename, anchor, attackbox, lifebox);
     }
 
-    private static Area findAttackBox(BufferedImage image) {
+    private static Area findArea(BufferedImage image, Color color) {
         for (int x = 0; x < image.getWidth(); x++) {
             for (int y = 0; y < image.getHeight(); y++) {
                 int clr = image.getRGB(x, y);
-                int red = extractRed(clr);
+                int red = color.extractValue(clr);
                 if (red > 0) {
-                    int topX = searchLastRedHorizontally(image, x, y);
-                    int bottomY = searchLastRedVertically(image, y, x);
+                    int topX = searchLastPresentHorizontally(image, x, y, color);
+                    int bottomY = searchLastPresentVertically(image, y, x, color);
                     return new Area(x, image.getHeight() - bottomY, topX - x, bottomY - y);
                 }
             }
@@ -97,9 +98,9 @@ class SpriteTool implements Callable<Void> {
         return null;
     }
 
-    private static int searchLastRedHorizontally(BufferedImage image, int from, int y) {
+    private static int searchLastPresentHorizontally(BufferedImage image, int from, int y, Color color) {
         for (int searchX = from; searchX < image.getWidth(); searchX++) {
-            int searchRed = extractRed(image.getRGB(searchX, y));
+            int searchRed = color.extractValue(image.getRGB(searchX, y));
             if (searchRed == 0) {
                 return searchX;
             }
@@ -108,9 +109,9 @@ class SpriteTool implements Callable<Void> {
     }
 
 
-    private static int searchLastRedVertically(BufferedImage image, int from, int x) {
+    private static int searchLastPresentVertically(BufferedImage image, int from, int x, Color color) {
         for (int searchY = from; searchY < image.getHeight(); searchY++) {
-            int searchRed = extractRed(image.getRGB(x, searchY));
+            int searchRed = color.extractValue(image.getRGB(x, searchY));
             if (searchRed == 0) {
                 return searchY;
             }
@@ -122,7 +123,7 @@ class SpriteTool implements Callable<Void> {
         for (int x = 0; x < image.getWidth(); x++) {
             for (int y = 0; y < image.getHeight(); y++) {
                 int rgb = image.getRGB(x, y);
-                int blue = extractBlue(rgb);
+                int blue = Color.BLUE.extractValue(rgb);
                 if (blue > 0) {
                     return new Point(x, image.getHeight() - y);
                 }
@@ -131,15 +132,28 @@ class SpriteTool implements Callable<Void> {
         return null;
     }
 
-    private static int extractBlue(int rgb) {
-        return rgb & 0x000000ff;
+    private enum Color {
+        RED {
+            @Override
+            int extractValue(int rgb) {
+                return (rgb & 0x00ff0000) >> 16;
+            }
+        }, GREEN {
+            @Override
+            int extractValue(int rgb) {
+                return (rgb & 0x0000ff00) >> 8;
+            }
+
+        }, BLUE {
+            @Override
+            int extractValue(int rgb) {
+                return rgb & 0x000000ff;
+            }
+
+        };
+
+        abstract int extractValue(int rgb);
     }
 
-    private static int extractGreen(int rgb) {
-        return (rgb & 0x0000ff00) >> 8;
-    }
 
-    private static int extractRed(int rgb) {
-        return (rgb & 0x00ff0000) >> 16;
-    }
 }

@@ -11,4 +11,5 @@ public class SpriteActionData {
     private String filename;
     private Point anchor;
     private Area attackbox;
+    private Area lifebox;
 }
